@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+
+
+def main():
+    args = parse_args()
+
+    repos = get_repos(args)
+
+    for repo in repos:
+        printRepo(repo)
+        os.chdir(repo)
+
+        if args.base_branch is not None and args.feature_branch is not None:
+            create_feature_branch(args.base_branch, args.feature_branch)
+
+        os.system(args.command)
+
+        if args.commit_message is not None:
+            os.system(f'git commit -a -m "{args.commit_message}"')
+
+        if args.reviewers is not None:
+            os.system(f"git push -f -u origin {args.feature_branch}")
+            os.system(f"gh pr create -f -B {args.base_branch} -r {args.reviewers}")
+
+        os.chdir("..")
+        print()
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="run commands or make changes across repos"
+    )
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "-r",
+        "--repos",
+        help="comma seperated list of repos/directories, which will be used to run commands",
+    )
+    group.add_argument(
+        "-rf",
+        "--repo_file",
+        type=argparse.FileType("r"),
+        help="a file containing a comma seperated list of repos/directories, which will be used to run commands",
+    )
+    parser.add_argument(
+        "-bb",
+        "--base_branch",
+        help="base branch for creating feature/new branch and pr",
+    )
+    parser.add_argument(
+        "-fb",
+        "--feature_branch",
+        help="name of the feature branch to create for new changes",
+    )
+    parser.add_argument(
+        "-cm",
+        "--commit_message",
+        help="commit message to apply to changes",
+    )
+    parser.add_argument(
+        "-rv",
+        "--reviewers",
+        help="commit message to apply to changes",
+    )
+    parser.add_argument(
+        "command", help="command or list of commands to run in each repo"
+    )
+    args = parser.parse_args()
+    return args
+
+
+def get_repos(args):
+    if args.repos is not None:
+        return args.repos.split(",")
+    else:
+        return args.repo_file.readline().strip().split(",")
+
+
+def printRepo(repo):
+    bold_stdout()
+    print(f"{repo}", end="")
+    restore_stdout()
+
+
+def bold_stdout():
+    print("\033[1m", end="")
+
+
+def restore_stdout():
+    print("\033[0m")
+
+
+def create_feature_branch(base_branch, feature_branch):
+    os.system(f"git fetch origin {base_branch}:{feature_branch}")
+    os.system(f"git checkout {feature_branch}")
+
+
+main()
